@@ -46,7 +46,7 @@ std::shared_ptr<Token> Scanner::nextToken()
             token = digits();
             break;
         default:
-            throw "Error in lexical analysis";
+            throw "Invalid character!";
         }
     } else {
         token = std::make_shared<Token>("EOF", row, column, EOF);

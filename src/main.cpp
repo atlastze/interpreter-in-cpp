@@ -17,23 +17,35 @@
 #include "Parser.h"
 #include <iostream>
 
+// Input examples:
+// 135 + 24 - 8     // valid input
+// 135 + 24 - 8 8   // unexpected integer 8
+// 135 + 24 - 8 +   // expecting an integer
 int main(int argc, char **argv)
 {
-    try {
-        CharStream charStream(" 135 + 24 - 8  ");
-        // CharStream charStream(" 135 + 24 - 8 8  "); // unexpected integer 8
-        // CharStream charStream(" 135 + 24 - 8 +  "); // expecting an integer
-        Scanner scanner(&charStream);
-        Parser parser(&scanner);
+    for (;;) {
+        try {
+            std::cout << "> ";
 
-        auto ast = parser.expression();
+            std::string input;
+            std::cin >> input;
 
-        Interpreter interpreter;
-        std::cout << ast.get()->accept(&interpreter) << std::endl;
+            // On Unix-like OS, when press Ctrl+D
+            if (input.empty())
+                break;
 
-        return 0;
-    } catch (const char *msg) {
-        std::cout << msg << std::endl;
-        return 1;
+            CharStream charStream(input);
+            Scanner scanner(&charStream);
+            Parser parser(&scanner);
+
+            auto ast = parser.expression();
+
+            Interpreter interpreter;
+            std::cout << ast.get()->accept(&interpreter) << std::endl;
+
+        } catch (const char *msg) {
+            std::cout << msg << std::endl;
+        }
     }
+    return 0;
 }

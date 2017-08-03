@@ -27,7 +27,7 @@ int Interpreter::visit(BinaryExpression *binexp)
     else if (binexp->token->text == "-")
         return a - b;
     else
-        throw "Undefined operation";
+        throw "Undefined operation!";
 }
 
 int Interpreter::visit(IntegerLiteral *integer)

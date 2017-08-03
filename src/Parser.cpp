@@ -22,7 +22,7 @@ std::shared_ptr<AbstractNode> Parser::integer()
     if (match(token, Token::Integer))
         return std::make_shared<IntegerLiteral>(token);
     else
-        throw "Error: integer is expected!";
+        throw "SyntaxError: integer is expected!";
 }
 
 std::shared_ptr<AbstractNode> Parser::expression()
@@ -42,7 +42,7 @@ std::shared_ptr<AbstractNode> Parser::expression()
     if (currentToken()->type == EOF)
         printf("Accepted!\n");
     else
-        throw "Error: unexpected token!";
+        throw "SyntaxError: unexpected token!";
 
     return root;
 }
