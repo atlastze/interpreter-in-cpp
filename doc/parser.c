@@ -25,7 +25,8 @@
 
  /***********************************************************
   * Standalone parser for bellowing syntax:
-  * expression ::= integer ( ( '+' | '-' ) integer )*
+  * expression ::= number ( ( '+' | '-' ) number )*
+  * number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
   * integer ::= ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' )+
   *
   * Compile: gcc parser.c
@@ -61,13 +62,6 @@ char charstream_current_char(struct CharStream *charStream)
 	return charStream->ch;
 }
 
-/* Return the source character following the current character without
-   consuming the current character. */
-char charstream_peek_char(struct CharStream *charStream)
-{
-	return charstream_current_char(charStream);
-}
-
 /* Consume the current source character and return the next character. */
 char charstream_next_char(struct CharStream *charStream)
 {
@@ -80,7 +74,7 @@ char charstream_next_char(struct CharStream *charStream)
  * Scanner -- generating tokens stream
  **********************************************************/
 /* Token types */
-int Integer = 256, Plus = 257, Minus = 258;
+int None = 256, Integer = 257, Float = 258, Plus = 259, Minus = 260;
 
 struct Token {
 	char text[64];		/* token string */
@@ -93,18 +87,6 @@ struct Scanner {
 	struct CharStream *charStream;	/* source code */
 	struct Token token;	/* current token */
 };
-
-/* Initialize a token */
-struct Token create_token(char *str, int r, int c, int t)
-{
-	printf(".. Creating token: %s (%d, %d: %d)\n", str, r, c, t);
-	struct Token token;
-	strncpy(token.text, str, 64);
-	token.row = r;
-	token.column = c;
-	token.type = t;
-	return token;
-}
 
 /* Call struct CharStream's method */
 char scanner_current_char(struct Scanner *scanner)
@@ -141,41 +123,112 @@ void scanner_skip_whitespace(struct Scanner *scanner)
 	}
 }
 
-/* Scanning unsigned integer */
-struct Token scanner_digits(struct Scanner *scanner)
+/* Reset current token */
+void scanner_init_token(struct Scanner *scanner)
 {
-	char buffer[64];
-	int row, column;
-	row = scanner->charStream->row;
-	column = scanner->charStream->column;
-	int i = 0;
-	do {
-		buffer[i] = scanner_current_char(scanner);
-		buffer[++i] = '\0';
-		if (i == 64)
-			break;
-	} while (isdigit(scanner_next_char(scanner)));
+	memset(scanner->token.text, 0, 64);
+	scanner->token.row = scanner->charStream->row;
+	scanner->token.column = scanner->charStream->column;
+	scanner->token.type = None;
+}
 
-	return create_token(buffer, row, column, Integer);
+/* Append current character to current token's text */
+void scanner_enter_char(struct Scanner *scanner)
+{
+	int n = strlen(scanner->token.text);
+	if (n >= 63)
+		return;
+	scanner->token.text[n] = scanner->charStream->ch;
+}
+
+/* Set current token text */
+void scanner_set_text(struct Scanner *scanner, char *text)
+{
+	strncpy(scanner->token.text, text, 64);
+}
+
+/* Set current token type */
+void scanner_set_type(struct Scanner *scanner, int type)
+{
+	scanner->token.type = type;
+}
+
+/* Scanning unsigned integer
+   Return 1 on success, otherwise, return 0 */
+int scanner_integer_literal(struct Scanner *scanner)
+{
+	if (!isdigit(scanner_current_char(scanner)))
+		return 0;
+
+	while (isdigit(scanner_current_char(scanner))) {
+		scanner_enter_char(scanner);
+		scanner_next_char(scanner);
+	}
+	return 1;
+}
+
+/* Scanning unsigned number:
+   number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
+   Return 1 on success, otherwise, return 0
+ */
+int scanner_numeric_literal(struct Scanner *scanner)
+{
+	scanner_set_type(scanner, Integer);	/* default type */
+
+	if (isdigit(scanner_current_char(scanner))) {
+		scanner_integer_literal(scanner);
+		if (scanner_current_char(scanner) == '.') {
+			scanner_set_type(scanner, Float);
+			scanner_enter_char(scanner);
+			scanner_next_char(scanner);
+			if (isdigit(scanner_current_char(scanner))) {
+				scanner_integer_literal(scanner);
+			}
+		}
+	} else if (scanner_current_char(scanner) == '.') {
+		scanner_set_type(scanner, Float);
+		scanner_enter_char(scanner);
+		scanner_next_char(scanner);
+		if (!scanner_integer_literal(scanner))
+			return 0;
+	} else
+		return 0;
+
+	if (scanner_current_char(scanner) == 'e'
+	    || scanner_current_char(scanner) == 'E') {
+		scanner_set_type(scanner, Float);
+		scanner_enter_char(scanner);
+		scanner_next_char(scanner);
+		if (scanner_current_char(scanner) == '+' ||
+		    scanner_current_char(scanner) == '-') {
+			scanner_enter_char(scanner);
+			scanner_next_char(scanner);
+		}
+		if (!scanner_integer_literal(scanner))
+			return 0;
+	}
+
+	return 1;
 }
 
 /* Consume the current token and return the next token . */
 struct Token scanner_next_token(struct Scanner *scanner)
 {
 	scanner_skip_whitespace(scanner);
+	scanner_init_token(scanner);
+
 	char ch;
-	int row, column;
-	row = scanner->charStream->row;
-	column = scanner->charStream->column;
 	if ((ch = scanner_current_char(scanner)) != EOF) {
 		switch (ch) {
 		case '+':
+			scanner_set_type(scanner, Plus);
+			scanner_enter_char(scanner);
 			scanner_next_char(scanner);
-			scanner->token = create_token("+", row, column, Plus);
 			break;
 		case '-':
+			scanner_set_type(scanner, Minus);
+			scanner_enter_char(scanner);
 			scanner_next_char(scanner);
-			scanner->token = create_token("-", row, column, Minus);
 			break;
 		case '0':
 		case '1':
@@ -187,12 +240,18 @@ struct Token scanner_next_token(struct Scanner *scanner)
 		case '7':
 		case '8':
 		case '9':
-			scanner->token = scanner_digits(scanner);
+		case '.':
+			scanner_init_token(scanner);
+			scanner_numeric_literal(scanner);
 			break;
 		}
 	} else {
-		scanner->token = create_token("EOF", row, column, EOF);
+		scanner_set_text(scanner, "EOF");
+		scanner_set_type(scanner, EOF);
 	}
+	printf(".. Scanning token: %s, position: (%d, %d), type: %d\n",
+	       scanner->token.text,
+	       scanner->token.row, scanner->token.column, scanner->token.type);
 	return scanner->token;
 }
 
@@ -237,10 +296,10 @@ int parser_match(struct Parser *parser, int type)
 	return 1;
 }
 
-/* Parsing integer */
-int parser_integer(struct Parser *parser)
+/* Parsing number */
+int parser_number(struct Parser *parser)
 {
-	if (parser_match(parser, Integer))
+	if (parser_match(parser, Integer) || parser_match(parser, Float))
 		return 1;
 	else
 		return 0;
@@ -249,13 +308,13 @@ int parser_integer(struct Parser *parser)
 /* Parsing expression */
 int parser_expression(struct Parser *parser)
 {
-	if (!parser_integer(parser))
+	if (!parser_number(parser))
 		return 0;
 
 	while (parser_current_token(parser).type == Plus ||
 	       parser_current_token(parser).type == Minus) {
 		parser_next_token(parser);
-		if (!parser_integer(parser))
+		if (!parser_number(parser))
 			return 0;
 	}
 

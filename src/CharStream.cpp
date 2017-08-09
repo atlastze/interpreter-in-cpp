@@ -27,16 +27,3 @@ char CharStream::currentChar() const
     else
         return text[column - 1]; // column start from 1
 }
-
-// Return the source character following the current character without
-// consuming the current character.
-char CharStream::peekChar() const
-{
-    if (text.empty())
-        return EOF;
-
-    if (column >= text.length())
-        return EOF;
-    else
-        return text[column]; // column start from 1
-}

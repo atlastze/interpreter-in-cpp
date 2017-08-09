@@ -48,10 +48,6 @@ public:
         return currentChar();
     }
 
-    // Return the source character following the current character without
-    // consuming the current character.
-    char peekChar() const;
-
 private:
     string text; // source line
     int row; // current line number
