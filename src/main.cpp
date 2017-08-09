@@ -41,7 +41,8 @@ int main(int argc, char **argv)
             auto ast = parser.expression();
 
             Interpreter interpreter;
-            std::cout << ast.get()->accept(&interpreter) << std::endl;
+            ast.get()->accept(&interpreter);
+            std::cout << interpreter.answer() << std::endl;
 
         } catch (const char *msg) {
             std::cout << msg << std::endl;

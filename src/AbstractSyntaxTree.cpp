@@ -16,4 +16,4 @@
 #include "AbstractSyntaxTree.h"
 
 CONCRETE_ACCEPT_METHOD_IMPL(BinaryExpression)
-CONCRETE_ACCEPT_METHOD_IMPL(IntegerLiteral)
+CONCRETE_ACCEPT_METHOD_IMPL(NumberLiteral)

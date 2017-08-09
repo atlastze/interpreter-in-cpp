@@ -241,7 +241,6 @@ struct Token scanner_next_token(struct Scanner *scanner)
 		case '8':
 		case '9':
 		case '.':
-			scanner_init_token(scanner);
 			scanner_numeric_literal(scanner);
 			break;
 		}

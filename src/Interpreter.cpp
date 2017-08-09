@@ -17,20 +17,22 @@
 #include "AbstractSyntaxTree.h"
 #include <stdlib.h>
 
-int Interpreter::visit(BinaryExpression *binexp)
+void Interpreter::visit(BinaryExpression *binexp)
 {
-    int a = binexp->children[0]->accept(this);
-    int b = binexp->children[1]->accept(this);
+    binexp->children[0]->accept(this);
+    double a = ans;
+    binexp->children[1]->accept(this);
+    double b = ans;
 
     if (binexp->token->text == "+")
-        return a + b;
+        ans = a + b;
     else if (binexp->token->text == "-")
-        return a - b;
+        ans = a - b;
     else
         throw "Undefined operation!";
 }
 
-int Interpreter::visit(IntegerLiteral *integer)
+void Interpreter::visit(NumberLiteral *integer)
 {
-    return atoi(integer->token->text.c_str());
+    ans = atof(integer->token->text.c_str());
 }

@@ -21,7 +21,15 @@
 class Interpreter : public Visitor {
 public:
     CONCRETE_VISIT_METHOD_DECL(BinaryExpression);
-    CONCRETE_VISIT_METHOD_DECL(IntegerLiteral);
+    CONCRETE_VISIT_METHOD_DECL(NumberLiteral);
+
+    double answer() const
+    {
+        return ans;
+    }
+
+private:
+    double ans; // the latest result
 };
 
 #endif /* INTERPRETER_H */

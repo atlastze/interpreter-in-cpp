@@ -21,17 +21,17 @@
 
 struct Token {
 
-    enum TokenType { Integer = 256,
-        Plus,
-        Minus };
+    enum TokenType { None = 256,
+        Number = 257,
+        Plus = 258,
+        Minus = 259 };
 
     Token()
         : text("")
         , row(0)
         , column(0)
-        , type(EOF)
+        , type(None)
     {
-        std::cout << "Creating token: " << text << std::endl;
     }
 
     Token(const std::string &text, int row, int column, int type)
@@ -40,12 +40,11 @@ struct Token {
         , column(column)
         , type(type)
     {
-        std::cout << "Creating token: " << text << std::endl;
     }
 
     ~Token()
     {
-        std::cout << "Deleting token: " << text << std::endl;
+        std::cout << ".. Deleting token: " << text << std::endl;
     }
 
     int type;

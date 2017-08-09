@@ -29,12 +29,12 @@ public:
     AbstractNode(std::shared_ptr<Token> token)
         : token(token)
     {
-        std::cout << "Creating AST node: " << token->text << std::endl;
+        std::cout << ".. Creating AST node: " << token->text << std::endl;
     }
 
     virtual ~AbstractNode()
     {
-        std::cout << "Deleting AST node: " << token->text << std::endl;
+        std::cout << ".. Deleting AST node: " << token->text << std::endl;
     }
 
     void addChild(std::shared_ptr<AbstractNode> child)
@@ -58,16 +58,16 @@ public:
     ~BinaryExpression() {}
 };
 
-class IntegerLiteral : public AbstractNode {
+class NumberLiteral : public AbstractNode {
 public:
     CONCRETE_ACCEPT_METHOD_DECL
 
-    IntegerLiteral(std::shared_ptr<Token> token)
+    NumberLiteral(std::shared_ptr<Token> token)
         : AbstractNode(token)
     {
     }
 
-    ~IntegerLiteral() {}
+    ~NumberLiteral() {}
 };
 
 #endif /* ABSTRACT_SYNTAX_TREE_H */

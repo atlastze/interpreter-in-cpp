@@ -59,7 +59,18 @@ public:
     }
 
 private:
-    std::shared_ptr<Token> digits();
+    // Initialize token pointer
+    void initToken();
+    // Set current token's text
+    void setText(std::string text);
+    // Set current token's type
+    void setType(int type);
+    // Append current char to current token's text
+    void enterChar();
+    // Scanning unsigned integer literal
+    bool integerLiteral();
+    // Scanning unsigned number literal
+    bool numberLiteral();
 
     CharStream *charStream; // source code
     std::shared_ptr<Token> token; // current token

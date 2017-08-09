@@ -19,18 +19,19 @@
 std::shared_ptr<Token> Scanner::nextToken()
 {
     skipWhiteSpace();
+    initToken();
+
     char ch;
-    int row, column;
-    row = charStream->currentRow();
-    column = charStream->currentColumn();
     if ((ch = currentChar()) != EOF) {
         switch (ch) {
         case '+':
-            token = std::make_shared<Token>("+", row, column, Token::Plus);
+            setType(Token::Plus);
+            enterChar();
             nextChar();
             break;
         case '-':
-            token = std::make_shared<Token>("-", row, column, Token::Minus);
+            setType(Token::Minus);
+            enterChar();
             nextChar();
             break;
         case '0':
@@ -43,27 +44,97 @@ std::shared_ptr<Token> Scanner::nextToken()
         case '7':
         case '8':
         case '9':
-            token = digits();
+        case '.':
+            numberLiteral();
             break;
         default:
             throw "Invalid character!";
         }
     } else {
-        token = std::make_shared<Token>("EOF", row, column, EOF);
+        setType(EOF);
+        setText("EOF");
     }
-
+    std::cout << ".. Scanning token: " << token->text
+              << ", type: " << token->type << std::endl;
     return token;
 }
 
-std::shared_ptr<Token> Scanner::digits()
+void Scanner::initToken()
 {
-    string buffer;
-    int row, column;
-    row = charStream->currentRow();
-    column = charStream->currentColumn();
-    do {
-        buffer.append(1, currentChar());
-    } while (isdigit(nextChar()));
+    token = std::make_shared<Token>("",
+        charStream->currentRow(),
+        charStream->currentColumn(),
+        Token::None);
+}
 
-    return std::make_shared<Token>(buffer, row, column, Token::Integer);
+void Scanner::enterChar()
+{
+    token->text.append(1, currentChar());
+}
+
+// Set current token text
+void Scanner::setText(std::string text)
+{
+    token->text = text;
+}
+
+// Set current token type
+void Scanner::setType(int type)
+{
+    token->type = type;
+}
+
+// Scanning unsigned integer
+// Return true on success, otherwise, return false
+bool Scanner::integerLiteral()
+{
+    if (!isdigit(currentChar()))
+        return false;
+
+    while (isdigit(currentChar())) {
+        enterChar();
+        nextChar();
+    }
+    return true;
+}
+
+// Scanning unsigned number:
+// number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
+// Return true on success, otherwise, return false
+bool Scanner::numberLiteral()
+{
+    setType(Token::Number); /* default type */
+
+    if (isdigit(currentChar())) {
+        integerLiteral();
+        if (currentChar() == '.') {
+            //setType(Float);
+            enterChar();
+            nextChar();
+            if (isdigit(currentChar())) {
+                integerLiteral();
+            }
+        }
+    } else if (currentChar() == '.') {
+        //setType(Float);
+        enterChar();
+        nextChar();
+        if (!integerLiteral())
+            return false;
+    } else
+        return false;
+
+    if (currentChar() == 'e' || currentChar() == 'E') {
+        //setType(Float);
+        enterChar();
+        nextChar();
+        if (currentChar() == '+' || currentChar() == '-') {
+            enterChar();
+            nextChar();
+        }
+        if (!integerLiteral())
+            return false;
+    }
+
+    return true;
 }

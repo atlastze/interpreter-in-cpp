@@ -27,7 +27,7 @@ public:
     }
 
     std::shared_ptr<AbstractNode> expression();
-    std::shared_ptr<AbstractNode> integer();
+    std::shared_ptr<AbstractNode> number();
 
 private:
     std::shared_ptr<Token> currentToken() const

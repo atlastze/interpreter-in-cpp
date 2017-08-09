@@ -17,30 +17,30 @@
 #define VISITOR_PATTERN_H
 
 #define ABSTRACT_VISIT_METHOD_DECL(classname) \
-    virtual int visit(classname *) = 0;
+    virtual void visit(classname *) = 0;
 
 #define CONCRETE_VISIT_METHOD_DECL(classname) \
-    int visit(classname *);
+    void visit(classname *);
 
 #define ABSTRACT_ACCEPT_METHOD_DECL \
-    virtual int accept(Visitor *visitor) = 0;
+    virtual void accept(Visitor *visitor) = 0;
 
 #define CONCRETE_ACCEPT_METHOD_DECL \
-    int accept(Visitor *visitor);
+    void accept(Visitor *visitor);
 
 #define CONCRETE_ACCEPT_METHOD_IMPL(classname) \
-    int classname::accept(Visitor *visitor)    \
+    void classname::accept(Visitor *visitor)   \
     {                                          \
         return visitor->visit(this);           \
     }
 
 class BinaryExpression;
-class IntegerLiteral;
+class NumberLiteral;
 
 class Visitor {
 public:
     ABSTRACT_VISIT_METHOD_DECL(BinaryExpression)
-    ABSTRACT_VISIT_METHOD_DECL(IntegerLiteral)
+    ABSTRACT_VISIT_METHOD_DECL(NumberLiteral)
 };
 
 #endif /* VISITOR_PATTERN_H */

@@ -4,10 +4,9 @@
 
 An C++ implementation of interpreter for the bellowing syntax:
 
-    expression ::= integer ( ( '+' | '-' ) integer )*
-
+    expression ::= number ( ( '+' | '-' ) number )*
+    number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
     integer ::= ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' )+
-
 
 ## References
 1. [Charles N. Fischer et al, Crafting a Compiler, 2009](https://www.pearsonhighered.com/program/Fischer-Crafting-A-Compiler/PGM315544.html)

@@ -16,24 +16,24 @@
 #include "Parser.h"
 #include <iostream>
 
-std::shared_ptr<AbstractNode> Parser::integer()
+std::shared_ptr<AbstractNode> Parser::number()
 {
     auto token = currentToken();
-    if (match(token, Token::Integer))
-        return std::make_shared<IntegerLiteral>(token);
+    if (match(token, Token::Number))
+        return std::make_shared<NumberLiteral>(token);
     else
-        throw "SyntaxError: integer is expected!";
+        throw "SyntaxError: number is expected!";
 }
 
 std::shared_ptr<AbstractNode> Parser::expression()
 {
-    auto root = integer();
+    auto root = number();
 
     while (currentToken()->type == Token::Plus || currentToken()->type == Token::Minus) {
         auto token = currentToken();
         nextToken();
         auto lhs = root;
-        auto rhs = integer();
+        auto rhs = number();
         root = std::make_shared<BinaryExpression>(token);
         root->addChild(lhs);
         root->addChild(rhs);
