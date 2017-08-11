@@ -30,21 +30,24 @@
   * integer ::= ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' )+
   *
   * Compile: gcc parser.c
-  * Run: ./a.out filename
+  * Run: ./a.out filename1 filename2 ...
   **********************************************************/
 
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include "error.h"
+
+struct Env env;					/* global error detection */
 
 /***********************************************************
  * CharStream -- characters stream
  **********************************************************/
 struct CharStream {
-	FILE *fp;		/* source file */
-	int row;		/* current line number */
-	int column;		/* current line position, start from 1 */
-	char ch;		/* current character */
+	FILE *fp;					/* source file */
+	int row;					/* current line number */
+	int column;					/* current line position, start from 1 */
+	char ch;					/* current character */
 };
 
 /* Initialize characters stream */
@@ -77,15 +80,15 @@ char charstream_next_char(struct CharStream *charStream)
 int None = 256, Integer = 257, Float = 258, Plus = 259, Minus = 260;
 
 struct Token {
-	char text[64];		/* token string */
-	int row;		/* line number */
-	int column;		/* column number */
-	int type;		/* token type */
+	char text[64];				/* token string */
+	int row;					/* line number */
+	int column;					/* column number */
+	int type;					/* token type */
 };
 
 struct Scanner {
 	struct CharStream *charStream;	/* source code */
-	struct Token token;	/* current token */
+	struct Token token;			/* current token */
 };
 
 /* Call struct CharStream's method */
@@ -153,25 +156,22 @@ void scanner_set_type(struct Scanner *scanner, int type)
 	scanner->token.type = type;
 }
 
-/* Scanning unsigned integer
-   Return 1 on success, otherwise, return 0 */
-int scanner_integer_literal(struct Scanner *scanner)
+/* Scanning unsigned integer */
+void scanner_integer_literal(struct Scanner *scanner)
 {
 	if (!isdigit(scanner_current_char(scanner)))
-		return 0;
+		raise_exception(&env, INVALID_NUMBER);
 
 	while (isdigit(scanner_current_char(scanner))) {
 		scanner_enter_char(scanner);
 		scanner_next_char(scanner);
 	}
-	return 1;
 }
 
 /* Scanning unsigned number:
    number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
-   Return 1 on success, otherwise, return 0
  */
-int scanner_numeric_literal(struct Scanner *scanner)
+void scanner_numeric_literal(struct Scanner *scanner)
 {
 	scanner_set_type(scanner, Integer);	/* default type */
 
@@ -189,26 +189,22 @@ int scanner_numeric_literal(struct Scanner *scanner)
 		scanner_set_type(scanner, Float);
 		scanner_enter_char(scanner);
 		scanner_next_char(scanner);
-		if (!scanner_integer_literal(scanner))
-			return 0;
+		scanner_integer_literal(scanner);
 	} else
-		return 0;
+		raise_exception(&env, INVALID_NUMBER);
 
 	if (scanner_current_char(scanner) == 'e'
-	    || scanner_current_char(scanner) == 'E') {
+		|| scanner_current_char(scanner) == 'E') {
 		scanner_set_type(scanner, Float);
 		scanner_enter_char(scanner);
 		scanner_next_char(scanner);
 		if (scanner_current_char(scanner) == '+' ||
-		    scanner_current_char(scanner) == '-') {
+			scanner_current_char(scanner) == '-') {
 			scanner_enter_char(scanner);
 			scanner_next_char(scanner);
 		}
-		if (!scanner_integer_literal(scanner))
-			return 0;
+		scanner_integer_literal(scanner);
 	}
-
-	return 1;
 }
 
 /* Consume the current token and return the next token . */
@@ -249,8 +245,8 @@ struct Token scanner_next_token(struct Scanner *scanner)
 		scanner_set_type(scanner, EOF);
 	}
 	printf(".. Scanning token: %s, position: (%d, %d), type: %d\n",
-	       scanner->token.text,
-	       scanner->token.row, scanner->token.column, scanner->token.type);
+		   scanner->token.text,
+		   scanner->token.row, scanner->token.column, scanner->token.type);
 	return scanner->token;
 }
 
@@ -287,62 +283,64 @@ struct Token parser_next_token(struct Parser *parser)
 }
 
 /* Check whether the current token matches the specific type */
-int parser_match(struct Parser *parser, int type)
+void parser_match(struct Parser *parser, int type)
 {
 	if (parser->scanner->token.type != type)
-		return 0;
-	parser_next_token(parser);
-	return 1;
+		raise_exception(&env, SYNTAX_ERROR);
+	if (type != EOF)
+		parser_next_token(parser);
 }
 
 /* Parsing number */
-int parser_number(struct Parser *parser)
+void parser_number(struct Parser *parser)
 {
-	if (parser_match(parser, Integer) || parser_match(parser, Float))
-		return 1;
+	if (parser_current_token(parser).type == Integer ||
+		parser_current_token(parser).type == Float)
+		parser_next_token(parser);
 	else
-		return 0;
+		raise_exception(&env, SYNTAX_ERROR);
 }
 
 /* Parsing expression */
-int parser_expression(struct Parser *parser)
+void parser_expression(struct Parser *parser)
 {
-	if (!parser_number(parser))
-		return 0;
+	parser_number(parser);
 
 	while (parser_current_token(parser).type == Plus ||
-	       parser_current_token(parser).type == Minus) {
+		   parser_current_token(parser).type == Minus) {
 		parser_next_token(parser);
-		if (!parser_number(parser))
-			return 0;
+		parser_number(parser);
 	}
 
-	if (parser_current_token(parser).type == EOF)
-		return 1;
-	else
-		return 0;
+	parser_match(parser, EOF);
 }
 
 /* Test */
 int main(int argc, char *argv[])
 {
-	if (argc < 2)
-		return 0;
+	for (int i = 1; i < argc; i++) {
+		printf("Processing file: %s ...\n", argv[i]);
 
-	FILE *fp = fopen(argv[1], "r");
+		FILE *fp = fopen(argv[i], "r");
 
-	struct CharStream charStream;
-	charstream_init(&charStream, fp);
-	struct Scanner scanner;
-	scanner_init(&scanner, &charStream);
-	struct Parser parser;
-	parser_init(&parser, &scanner);
-	if (parser_expression(&parser))
-		printf("Accepted!\n");
-	else
-		printf("Syntax error!\n");
+		struct CharStream charStream;
+		charstream_init(&charStream, fp);
+		struct Scanner scanner;
+		scanner_init(&scanner, &charStream);
+		struct Parser parser;
+		parser_init(&parser, &scanner);
 
-	fclose(fp);
+		begin_catching_exception(&env);
+		if (error_code(&env) == 0) {
+			parser_expression(&parser);
+			printf("Accepted!\n");
+		} else {
+			printf("Syntax error!\n");
+		}
+		end_catching_exception(&env);
+
+		fclose(fp);
+	}
 
 	return 0;
 }
