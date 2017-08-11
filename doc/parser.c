@@ -243,6 +243,8 @@ struct Token scanner_next_token(struct Scanner *scanner)
         case '.':
             scanner_numeric_literal(scanner);
             break;
+        default:
+            raise_exception(&env, INVALID_CHARACTER);
         }
     } else {
         scanner_set_text(scanner, "EOF");
@@ -327,15 +329,15 @@ void syntax_check(FILE * fp)
 
     /* Initializations */
     charstream_init(&charStream, fp);
-    scanner_init(&scanner, &charStream);
-    parser_init(&parser, &scanner);
 
     begin_catching_exception(&env);
     if (error_code(&env) == 0) {
+        scanner_init(&scanner, &charStream);    /* throws */
+        parser_init(&parser, &scanner);
         parser_expression(&parser);
         printf("Accepted!\n");
     } else {
-        printf("Syntax error!\n");
+        printf("Syntax error, code: %d !\n", env.status);
     }
     end_catching_exception(&env);
 }

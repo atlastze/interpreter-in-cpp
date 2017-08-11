@@ -29,8 +29,9 @@
 #include <stdio.h>
 #include <setjmp.h>
 
-#define INVALID_NUMBER          3
-#define SYNTAX_ERROR            4
+#define INVALID_CHARACTER 1
+#define INVALID_NUMBER    2
+#define SYNTAX_ERROR      3
 
 struct Env {
     jmp_buf buf;
