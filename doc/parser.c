@@ -29,8 +29,12 @@
   * number ::= ( integer ( '.' integer? )? | '.' integer ) ( ( 'e' | 'E' ) ( '+' | '-' )? integer )?
   * integer ::= ( '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' )+
   *
-  * Compile: gcc parser.c
-  * Run: ./a.out filename1 filename2 ...
+  * Compile:
+  *     gcc parser.c
+  * Run:
+  *     ./a.out filename1 filename2 ...
+  * or input from stdin (press Enter to input another line, and Ctrl+D to finish):
+  *     ./a.out
   **********************************************************/
 
 #include <stdio.h>
@@ -38,39 +42,39 @@
 #include <ctype.h>
 #include "error.h"
 
-struct Env env;					/* global error detection */
+struct Env env;                 /* global error detection */
 
 /***********************************************************
  * CharStream -- characters stream
  **********************************************************/
 struct CharStream {
-	FILE *fp;					/* source file */
-	int row;					/* current line number */
-	int column;					/* current line position, start from 1 */
-	char ch;					/* current character */
+    FILE *fp;                   /* source file */
+    int row;                    /* current line number */
+    int column;                 /* current line position, start from 1 */
+    char ch;                    /* current character */
 };
 
 /* Initialize characters stream */
 void charstream_init(struct CharStream *charStream, FILE * fp)
 {
-	charStream->fp = fp;
-	charStream->row = 1;
-	charStream->column = 1;
-	charStream->ch = fgetc(charStream->fp);
+    charStream->fp = fp;
+    charStream->row = 1;
+    charStream->column = 1;
+    charStream->ch = fgetc(charStream->fp);
 }
 
 /* Return the source character at the current position. */
 char charstream_current_char(struct CharStream *charStream)
 {
-	return charStream->ch;
+    return charStream->ch;
 }
 
 /* Consume the current source character and return the next character. */
 char charstream_next_char(struct CharStream *charStream)
 {
-	charStream->ch = fgetc(charStream->fp);
-	charStream->column++;
-	return charStream->ch;
+    charStream->ch = fgetc(charStream->fp);
+    charStream->column++;
+    return charStream->ch;
 }
 
 /***********************************************************
@@ -80,92 +84,92 @@ char charstream_next_char(struct CharStream *charStream)
 int None = 256, Integer = 257, Float = 258, Plus = 259, Minus = 260;
 
 struct Token {
-	char text[64];				/* token string */
-	int row;					/* line number */
-	int column;					/* column number */
-	int type;					/* token type */
+    char text[64];              /* token string */
+    int row;                    /* line number */
+    int column;                 /* column number */
+    int type;                   /* token type */
 };
 
 struct Scanner {
-	struct CharStream *charStream;	/* source code */
-	struct Token token;			/* current token */
+    struct CharStream *charStream;  /* source code */
+    struct Token token;         /* current token */
 };
 
 /* Call struct CharStream's method */
 char scanner_current_char(struct Scanner *scanner)
 {
-	return charstream_current_char(scanner->charStream);
+    return charstream_current_char(scanner->charStream);
 }
 
 /* Call struct CharStream's method */
 char scanner_next_char(struct Scanner *scanner)
 {
-	return charstream_next_char(scanner->charStream);
+    return charstream_next_char(scanner->charStream);
 }
 
 /* Returns current token */
 struct Token scanner_current_token(struct Scanner *scanner)
 {
-	return scanner->token;
+    return scanner->token;
 }
 
 /* Check whether a character is white space */
 int isWhiteSpace(char ch)
 {
-	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
+    return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
 }
 
 void scanner_skip_whitespace(struct Scanner *scanner)
 {
-	while (isWhiteSpace(scanner_current_char(scanner))) {
-		if (scanner_current_char(scanner) == '\n') {
-			scanner->charStream->row++;
-			scanner->charStream->column = 0;
-		}
-		scanner_next_char(scanner);
-	}
+    while (isWhiteSpace(scanner_current_char(scanner))) {
+        if (scanner_current_char(scanner) == '\n') {
+            scanner->charStream->row++;
+            scanner->charStream->column = 0;
+        }
+        scanner_next_char(scanner);
+    }
 }
 
 /* Reset current token */
 void scanner_init_token(struct Scanner *scanner)
 {
-	memset(scanner->token.text, 0, 64);
-	scanner->token.row = scanner->charStream->row;
-	scanner->token.column = scanner->charStream->column;
-	scanner->token.type = None;
+    memset(scanner->token.text, 0, 64);
+    scanner->token.row = scanner->charStream->row;
+    scanner->token.column = scanner->charStream->column;
+    scanner->token.type = None;
 }
 
 /* Append current character to current token's text */
 void scanner_enter_char(struct Scanner *scanner)
 {
-	int n = strlen(scanner->token.text);
-	if (n >= 63)
-		return;
-	scanner->token.text[n] = scanner->charStream->ch;
+    int n = strlen(scanner->token.text);
+    if (n >= 63)
+        return;
+    scanner->token.text[n] = scanner->charStream->ch;
 }
 
 /* Set current token text */
 void scanner_set_text(struct Scanner *scanner, char *text)
 {
-	strncpy(scanner->token.text, text, 64);
+    strncpy(scanner->token.text, text, 64);
 }
 
 /* Set current token type */
 void scanner_set_type(struct Scanner *scanner, int type)
 {
-	scanner->token.type = type;
+    scanner->token.type = type;
 }
 
 /* Scanning unsigned integer */
 void scanner_integer_literal(struct Scanner *scanner)
 {
-	if (!isdigit(scanner_current_char(scanner)))
-		raise_exception(&env, INVALID_NUMBER);
+    if (!isdigit(scanner_current_char(scanner)))
+        raise_exception(&env, INVALID_NUMBER);
 
-	while (isdigit(scanner_current_char(scanner))) {
-		scanner_enter_char(scanner);
-		scanner_next_char(scanner);
-	}
+    while (isdigit(scanner_current_char(scanner))) {
+        scanner_enter_char(scanner);
+        scanner_next_char(scanner);
+    }
 }
 
 /* Scanning unsigned number:
@@ -173,174 +177,185 @@ void scanner_integer_literal(struct Scanner *scanner)
  */
 void scanner_numeric_literal(struct Scanner *scanner)
 {
-	scanner_set_type(scanner, Integer);	/* default type */
+    scanner_set_type(scanner, Integer); /* default type */
 
-	if (isdigit(scanner_current_char(scanner))) {
-		scanner_integer_literal(scanner);
-		if (scanner_current_char(scanner) == '.') {
-			scanner_set_type(scanner, Float);
-			scanner_enter_char(scanner);
-			scanner_next_char(scanner);
-			if (isdigit(scanner_current_char(scanner))) {
-				scanner_integer_literal(scanner);
-			}
-		}
-	} else if (scanner_current_char(scanner) == '.') {
-		scanner_set_type(scanner, Float);
-		scanner_enter_char(scanner);
-		scanner_next_char(scanner);
-		scanner_integer_literal(scanner);
-	} else
-		raise_exception(&env, INVALID_NUMBER);
+    if (isdigit(scanner_current_char(scanner))) {
+        scanner_integer_literal(scanner);
+        if (scanner_current_char(scanner) == '.') {
+            scanner_set_type(scanner, Float);
+            scanner_enter_char(scanner);
+            scanner_next_char(scanner);
+            if (isdigit(scanner_current_char(scanner))) {
+                scanner_integer_literal(scanner);
+            }
+        }
+    } else if (scanner_current_char(scanner) == '.') {
+        scanner_set_type(scanner, Float);
+        scanner_enter_char(scanner);
+        scanner_next_char(scanner);
+        scanner_integer_literal(scanner);
+    } else
+        raise_exception(&env, INVALID_NUMBER);
 
-	if (scanner_current_char(scanner) == 'e'
-		|| scanner_current_char(scanner) == 'E') {
-		scanner_set_type(scanner, Float);
-		scanner_enter_char(scanner);
-		scanner_next_char(scanner);
-		if (scanner_current_char(scanner) == '+' ||
-			scanner_current_char(scanner) == '-') {
-			scanner_enter_char(scanner);
-			scanner_next_char(scanner);
-		}
-		scanner_integer_literal(scanner);
-	}
+    if (scanner_current_char(scanner) == 'e'
+        || scanner_current_char(scanner) == 'E') {
+        scanner_set_type(scanner, Float);
+        scanner_enter_char(scanner);
+        scanner_next_char(scanner);
+        if (scanner_current_char(scanner) == '+' ||
+            scanner_current_char(scanner) == '-') {
+            scanner_enter_char(scanner);
+            scanner_next_char(scanner);
+        }
+        scanner_integer_literal(scanner);
+    }
 }
 
 /* Consume the current token and return the next token . */
 struct Token scanner_next_token(struct Scanner *scanner)
 {
-	scanner_skip_whitespace(scanner);
-	scanner_init_token(scanner);
+    scanner_skip_whitespace(scanner);
+    scanner_init_token(scanner);
 
-	char ch;
-	if ((ch = scanner_current_char(scanner)) != EOF) {
-		switch (ch) {
-		case '+':
-			scanner_set_type(scanner, Plus);
-			scanner_enter_char(scanner);
-			scanner_next_char(scanner);
-			break;
-		case '-':
-			scanner_set_type(scanner, Minus);
-			scanner_enter_char(scanner);
-			scanner_next_char(scanner);
-			break;
-		case '0':
-		case '1':
-		case '2':
-		case '3':
-		case '4':
-		case '5':
-		case '6':
-		case '7':
-		case '8':
-		case '9':
-		case '.':
-			scanner_numeric_literal(scanner);
-			break;
-		}
-	} else {
-		scanner_set_text(scanner, "EOF");
-		scanner_set_type(scanner, EOF);
-	}
-	printf(".. Scanning token: %s, position: (%d, %d), type: %d\n",
-		   scanner->token.text,
-		   scanner->token.row, scanner->token.column, scanner->token.type);
-	return scanner->token;
+    char ch;
+    if ((ch = scanner_current_char(scanner)) != EOF) {
+        switch (ch) {
+        case '+':
+            scanner_set_type(scanner, Plus);
+            scanner_enter_char(scanner);
+            scanner_next_char(scanner);
+            break;
+        case '-':
+            scanner_set_type(scanner, Minus);
+            scanner_enter_char(scanner);
+            scanner_next_char(scanner);
+            break;
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case '.':
+            scanner_numeric_literal(scanner);
+            break;
+        }
+    } else {
+        scanner_set_text(scanner, "EOF");
+        scanner_set_type(scanner, EOF);
+    }
+    printf(".. Scanning token: %s, position: (%d, %d), type: %d\n",
+           scanner->token.text,
+           scanner->token.row, scanner->token.column, scanner->token.type);
+    return scanner->token;
 }
 
 /* Initialize a scanner */
 void scanner_init(struct Scanner *scanner, struct CharStream *charStream)
 {
-	scanner->charStream = charStream;
-	scanner_next_token(scanner);
+    scanner->charStream = charStream;
+    scanner_next_token(scanner);
 }
 
 /***********************************************************
  * Parser
  **********************************************************/
 struct Parser {
-	struct Scanner *scanner;	// from where we get tokens
+    struct Scanner *scanner;    // from where we get tokens
 };
 
 /* Initialize a parser */
 void parser_init(struct Parser *parser, struct Scanner *scanner)
 {
-	parser->scanner = scanner;
+    parser->scanner = scanner;
 }
 
 /* Call struct Scanner's method */
 struct Token parser_current_token(struct Parser *parser)
 {
-	return scanner_current_token(parser->scanner);
+    return scanner_current_token(parser->scanner);
 }
 
 /* Call struct Scanner's method */
 struct Token parser_next_token(struct Parser *parser)
 {
-	return scanner_next_token(parser->scanner);
+    return scanner_next_token(parser->scanner);
 }
 
 /* Check whether the current token matches the specific type */
 void parser_match(struct Parser *parser, int type)
 {
-	if (parser->scanner->token.type != type)
-		raise_exception(&env, SYNTAX_ERROR);
-	if (type != EOF)
-		parser_next_token(parser);
+    if (parser->scanner->token.type != type)
+        raise_exception(&env, SYNTAX_ERROR);
+    if (type != EOF)
+        parser_next_token(parser);
 }
 
 /* Parsing number */
 void parser_number(struct Parser *parser)
 {
-	if (parser_current_token(parser).type == Integer ||
-		parser_current_token(parser).type == Float)
-		parser_next_token(parser);
-	else
-		raise_exception(&env, SYNTAX_ERROR);
+    if (parser_current_token(parser).type == Integer ||
+        parser_current_token(parser).type == Float)
+        parser_next_token(parser);
+    else
+        raise_exception(&env, SYNTAX_ERROR);
 }
 
 /* Parsing expression */
 void parser_expression(struct Parser *parser)
 {
-	parser_number(parser);
+    parser_number(parser);
 
-	while (parser_current_token(parser).type == Plus ||
-		   parser_current_token(parser).type == Minus) {
-		parser_next_token(parser);
-		parser_number(parser);
-	}
+    while (parser_current_token(parser).type == Plus ||
+           parser_current_token(parser).type == Minus) {
+        parser_next_token(parser);
+        parser_number(parser);
+    }
 
-	parser_match(parser, EOF);
+    parser_match(parser, EOF);
+}
+
+void syntax_check(FILE * fp)
+{
+    struct CharStream charStream;
+    struct Scanner scanner;
+    struct Parser parser;
+
+    /* Initializations */
+    charstream_init(&charStream, fp);
+    scanner_init(&scanner, &charStream);
+    parser_init(&parser, &scanner);
+
+    begin_catching_exception(&env);
+    if (error_code(&env) == 0) {
+        parser_expression(&parser);
+        printf("Accepted!\n");
+    } else {
+        printf("Syntax error!\n");
+    }
+    end_catching_exception(&env);
 }
 
 /* Test */
 int main(int argc, char *argv[])
 {
-	for (int i = 1; i < argc; i++) {
-		printf("Processing file: %s ...\n", argv[i]);
+    /*reading from file list */
+    for (int i = 1; i < argc; i++) {
+        printf("Processing file: %s ...\n", argv[i]);
 
-		FILE *fp = fopen(argv[i], "r");
+        FILE *fp = fopen(argv[i], "r");
+        syntax_check(fp);
+        fclose(fp);
+    }
 
-		struct CharStream charStream;
-		charstream_init(&charStream, fp);
-		struct Scanner scanner;
-		scanner_init(&scanner, &charStream);
-		struct Parser parser;
-		parser_init(&parser, &scanner);
+    /*reading from stdin */
+    if (argc == 1) {
+        syntax_check(stdin);
+    }
 
-		begin_catching_exception(&env);
-		if (error_code(&env) == 0) {
-			parser_expression(&parser);
-			printf("Accepted!\n");
-		} else {
-			printf("Syntax error!\n");
-		}
-		end_catching_exception(&env);
-
-		fclose(fp);
-	}
-
-	return 0;
+    return 0;
 }

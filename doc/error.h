@@ -33,8 +33,8 @@
 #define SYNTAX_ERROR            4
 
 struct Env {
-	jmp_buf buf;
-	int status;
+    jmp_buf buf;
+    int status;
 };
 
 #define begin_catching_exception(env) ((env)->status = setjmp((env)->buf))
