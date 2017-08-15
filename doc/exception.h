@@ -33,7 +33,8 @@
     (!_rethrowable_ && pop_jmp() && (_rethrowable_ = 1)))
 
 #define try \
-    int _except_code_ = setjmp(jmpStack.buf[push_jmp()]); \
+    int _index = push_jmp(); \
+    int _except_code_ = setjmp(jmpStack.buf[_index]); \
     volatile int _rethrowable_ = 0; \
     if (_except_code_ == 0)
 
@@ -62,7 +63,9 @@ static inline int push_jmp(void)
 
 static inline int pop_jmp(void)
 {
-    jmpStack.buf = realloc(jmpStack.buf, sizeof(jmp_buf) * (--jmpStack.count));
+    if (jmpStack.count > 0)
+        jmpStack.buf =
+            realloc(jmpStack.buf, sizeof(jmp_buf) * (--jmpStack.count));
     return 1;
 }
 
