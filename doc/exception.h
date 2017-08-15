@@ -23,13 +23,47 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef EXCEPTION_H
+#define EXCEPTION_H
 
-#define INVALID_CHARACTER 1
-#define INVALID_NUMBER    2
-#define SYNTAX_ERROR      3
+#include <stdlib.h>
+#include <setjmp.h>
 
-void raise_exception(int code, const char *msg);
+#define RETHROWABLE (_rethrowable_ || \
+    (!_rethrowable_ && pop_jmp() && (_rethrowable_ = 1)))
 
-#endif /* ERROR_H */
+#define try \
+    int _except_code_ = setjmp(jmpStack.buf[push_jmp()]); \
+    volatile int _rethrowable_ = 0; \
+    if (_except_code_ == 0)
+
+#define catch(e) \
+    else if(_except_code_ && RETHROWABLE)
+
+#define finally \
+    else if(RETHROWABLE)
+
+#define throw(e) \
+    if(jmpStack.count > 0) longjmp(jmpStack.buf[jmpStack.count - 1], e)
+
+struct JmpStack {
+    jmp_buf *buf;
+    unsigned int count;
+};
+
+extern struct JmpStack jmpStack;
+
+static inline int push_jmp(void)
+{
+    jmpStack.buf =
+        realloc(jmpStack.buf, sizeof(jmp_buf) * (jmpStack.count + 1));
+    return jmpStack.count++;
+}
+
+static inline int pop_jmp(void)
+{
+    jmpStack.buf = realloc(jmpStack.buf, sizeof(jmp_buf) * (--jmpStack.count));
+    return 1;
+}
+
+#endif /* EXCEPTION_H */

@@ -41,8 +41,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "error.h"
-
-struct Env env;                 /* global error detection */
+#include "exception.h"
 
 /***********************************************************
  * CharStream -- characters stream
@@ -164,7 +163,7 @@ void scanner_set_type(struct Scanner *scanner, int type)
 void scanner_integer_literal(struct Scanner *scanner)
 {
     if (!isdigit(scanner_current_char(scanner)))
-        raise_exception(&env, INVALID_NUMBER);
+        raise_exception(INVALID_NUMBER, "Invalid number!");
 
     while (isdigit(scanner_current_char(scanner))) {
         scanner_enter_char(scanner);
@@ -195,7 +194,7 @@ void scanner_numeric_literal(struct Scanner *scanner)
         scanner_next_char(scanner);
         scanner_integer_literal(scanner);
     } else
-        raise_exception(&env, INVALID_NUMBER);
+        raise_exception(INVALID_NUMBER, "Invalid number!");
 
     if (scanner_current_char(scanner) == 'e'
         || scanner_current_char(scanner) == 'E') {
@@ -244,7 +243,7 @@ struct Token scanner_next_token(struct Scanner *scanner)
             scanner_numeric_literal(scanner);
             break;
         default:
-            raise_exception(&env, INVALID_CHARACTER);
+            raise_exception(INVALID_CHARACTER, "Invalid character!");
         }
     } else {
         scanner_set_text(scanner, "EOF");
@@ -292,7 +291,7 @@ struct Token parser_next_token(struct Parser *parser)
 void parser_match(struct Parser *parser, int type)
 {
     if (parser->scanner->token.type != type)
-        raise_exception(&env, SYNTAX_ERROR);
+        raise_exception(SYNTAX_ERROR, "Syntax error!");
     if (type != EOF)
         parser_next_token(parser);
 }
@@ -304,7 +303,7 @@ void parser_number(struct Parser *parser)
         parser_current_token(parser).type == Float)
         parser_next_token(parser);
     else
-        raise_exception(&env, SYNTAX_ERROR);
+        raise_exception(SYNTAX_ERROR, "Syntax error!");
 }
 
 /* Parsing expression */
@@ -330,16 +329,14 @@ void syntax_check(FILE * fp)
     /* Initializations */
     charstream_init(&charStream, fp);
 
-    begin_catching_exception(&env);
-    if (error_code(&env) == 0) {
+    try {
         scanner_init(&scanner, &charStream);    /* throws */
         parser_init(&parser, &scanner);
         parser_expression(&parser);
         printf("Accepted!\n");
-    } else {
-        printf("Syntax error, code: %d !\n", env.status);
+    } finally {
+        printf("Syntax error!\n");
     }
-    end_catching_exception(&env);
 }
 
 /* Test */

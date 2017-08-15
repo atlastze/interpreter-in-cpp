@@ -23,13 +23,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ERROR_H
-#define ERROR_H
+#include <stdio.h>
+#include "error.h"
+#include "exception.h"
 
-#define INVALID_CHARACTER 1
-#define INVALID_NUMBER    2
-#define SYNTAX_ERROR      3
-
-void raise_exception(int code, const char *msg);
-
-#endif /* ERROR_H */
+void raise_exception(int code, const char *msg)
+{
+    fprintf(stderr, "%s\n", msg);
+    throw(code);
+}
