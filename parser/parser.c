@@ -291,7 +291,7 @@ struct Token parser_next_token(struct Parser *parser)
 void parser_match(struct Parser *parser, int type)
 {
     if (parser->scanner->token.type != type)
-        raise_exception(SYNTAX_ERROR, "Syntax error!");
+        raise_exception(SYNTAX_ERROR, "Token type not matched!");
     if (type != EOF)
         parser_next_token(parser);
 }
@@ -299,11 +299,12 @@ void parser_match(struct Parser *parser, int type)
 /* Parsing number */
 void parser_number(struct Parser *parser)
 {
-    if (parser_current_token(parser).type == Integer ||
-        parser_current_token(parser).type == Float)
-        parser_next_token(parser);
+    if (parser_current_token(parser).type == Integer)
+        parser_match(parser, Integer);
+    else if(parser_current_token(parser).type == Float)
+        parser_match(parser, Float);
     else
-        raise_exception(SYNTAX_ERROR, "Syntax error!");
+        raise_exception(SYNTAX_ERROR, "Expect a number!");
 }
 
 /* Parsing expression */
@@ -335,7 +336,7 @@ void syntax_check(FILE * fp)
         parser_expression(&parser);
         printf("Accepted!\n");
     } finally {
-        printf("Syntax error!\n");
+        printf("Syntax error, code: %d!\n", _except_code_);
     }
 }
 

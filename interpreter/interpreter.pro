@@ -7,13 +7,13 @@
 TARGET = interpreter
 
 # Specify the #include directories which should be searched when compiling the project.
-INCLUDEPATH = ./src
+INCLUDEPATH = .
 
 # Specify the source directories which should be searched when compiling the project.
-DEPENDPATH = ./src
+DEPENDPATH = .
 
 # Defines the header files for the project.
-HEADERS = $(wildcard ./src/*.h)
+HEADERS = $(wildcard ./*.h)
 
 # Defines the source files for the project.
-SOURCES = $(wildcard ./src/*.cpp)
+SOURCES = $(wildcard ./*.cpp)
