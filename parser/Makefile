@@ -1,5 +1,7 @@
 # Makefile - do not edit!
 
+CFLAGS += -std=c99
+
 # Include project file
 include $(wildcard *.pro)
 

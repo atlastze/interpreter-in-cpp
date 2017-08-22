@@ -80,7 +80,26 @@ char charstream_next_char(struct CharStream *charStream)
  * Scanner -- generating tokens stream
  **********************************************************/
 /* Token types */
-int None = 256, Integer = 257, Float = 258, Plus = 259, Minus = 260;
+#define DECL_TOKEN_SET \
+    DECL_TOKEN(None, "none") \
+    DECL_TOKEN(Integer, "<integer>") \
+    DECL_TOKEN(Float, "<float>") \
+    DECL_TOKEN(Plus, "+") \
+    DECL_TOKEN(Minus, "-")
+
+#define DECL_TOKEN(type, text) type,
+typedef enum {
+    DECL_TOKEN_SET
+} TokenType;
+#undef DECL_TOKEN
+
+#define DECL_TOKEN(type, text) text,
+static const char *TokenText[] = {
+    DECL_TOKEN_SET
+};
+
+#undef DECL_TOKEN
+//int None = 256, Integer = 257, Float = 258, Plus = 259, Minus = 260;
 
 struct Token {
     char text[64];              /* token string */
@@ -249,9 +268,10 @@ struct Token scanner_next_token(struct Scanner *scanner)
         scanner_set_text(scanner, "EOF");
         scanner_set_type(scanner, EOF);
     }
-    printf(".. Scanning token: %s, position: (%d, %d), type: %d\n",
+    printf(".. Scanning token: %s, position: (%d, %d), type: %s\n",
            scanner->token.text,
-           scanner->token.row, scanner->token.column, scanner->token.type);
+           scanner->token.row, scanner->token.column,
+           TokenText[scanner->token.type]);
     return scanner->token;
 }
 
@@ -301,7 +321,7 @@ void parser_number(struct Parser *parser)
 {
     if (parser_current_token(parser).type == Integer)
         parser_match(parser, Integer);
-    else if(parser_current_token(parser).type == Float)
+    else if (parser_current_token(parser).type == Float)
         parser_match(parser, Float);
     else
         raise_exception(SYNTAX_ERROR, "Expect a number!");
