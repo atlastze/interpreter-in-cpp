@@ -32,9 +32,12 @@
   * Compile:
   *     gcc parser.c
   * Run:
-  *     ./a.out filename1 filename2 ...
-  * or input from stdin (press Enter to input another line, and Ctrl+D to finish):
   *     ./a.out
+  * For example: (press Enter to input another line, and Ctrl+D to finish):
+  *     >>> 3-4
+  *     >>> 3+4-
+  *     ... 5
+  *     >>>
   **********************************************************/
 
 #include <stdio.h>
@@ -43,23 +46,55 @@
 #include "error.h"
 #include "exception.h"
 
+#define EOL -1
+
+static inline void initial_prompt()
+{
+    printf(">>> ");
+}
+
+static inline int multiline_prompt()
+{
+    printf("... ");
+    return 1;
+}
+
 /***********************************************************
  * CharStream -- characters stream
  **********************************************************/
 struct CharStream {
-    FILE *fp;                   /* source file */
+    FILE *fp;                   /* source code file */
+    char buffer[2048];          /* source code */
     int row;                    /* current line number */
     int column;                 /* current line position, start from 1 */
     char ch;                    /* current character */
 };
 
+static inline int charstream_read_line(struct CharStream *charStream)
+{
+    charStream->column = 1;
+    if (fgets(charStream->buffer, 2048, charStream->fp)) {
+        charStream->ch = charStream->buffer[charStream->column - 1];
+        return 1;
+    } else {
+        charStream->ch = EOL;
+        return 0;
+    }
+}
+
 /* Initialize characters stream */
-void charstream_init(struct CharStream *charStream, FILE * fp)
+int charstream_init(struct CharStream *charStream, FILE * fp)
 {
     charStream->fp = fp;
     charStream->row = 1;
-    charStream->column = 1;
-    charStream->ch = fgetc(charStream->fp);
+    return charstream_read_line(charStream);
+}
+
+/* If previous line is not a complete expression, then read the next line */
+int charstream_next_line(struct CharStream *charStream)
+{
+    charStream->row++;
+    return charstream_read_line(charStream);
 }
 
 /* Return the source character at the current position. */
@@ -71,8 +106,12 @@ char charstream_current_char(struct CharStream *charStream)
 /* Consume the current source character and return the next character. */
 char charstream_next_char(struct CharStream *charStream)
 {
-    charStream->ch = fgetc(charStream->fp);
+    if (charStream->column == strlen(charStream->buffer)) {
+        charStream->ch = -1;
+        return EOL;
+    }
     charStream->column++;
+    charStream->ch = charStream->buffer[charStream->column - 1];
     return charStream->ch;
 }
 
@@ -141,10 +180,10 @@ int isWhiteSpace(char ch)
 void scanner_skip_whitespace(struct Scanner *scanner)
 {
     while (isWhiteSpace(scanner_current_char(scanner))) {
-        if (scanner_current_char(scanner) == '\n') {
-            scanner->charStream->row++;
-            scanner->charStream->column = 0;
-        }
+        /*if (scanner_current_char(scanner) == '\n') {
+           scanner->charStream->row++;
+           scanner->charStream->column = 0;
+           } */
         scanner_next_char(scanner);
     }
 }
@@ -237,7 +276,7 @@ struct Token scanner_next_token(struct Scanner *scanner)
     scanner_init_token(scanner);
 
     char ch;
-    if ((ch = scanner_current_char(scanner)) != EOF) {
+    if ((ch = scanner_current_char(scanner)) != EOL) {
         switch (ch) {
         case '+':
             scanner_set_type(scanner, Plus);
@@ -311,6 +350,9 @@ struct Token parser_next_token(struct Parser *parser)
 /* Check whether the current token matches the specific type */
 void parser_match(struct Parser *parser, int type)
 {
+    if (parser->scanner->token.type == EOS && type != EOS)
+        raise_exception(SYNTAX_ERROR, "Incomplete!");
+
     if (parser->scanner->token.type != type)
         raise_exception(SYNTAX_ERROR, "Token type not matched!");
     if (type != EOS)
@@ -324,7 +366,12 @@ void parser_number(struct Parser *parser)
         parser_match(parser, Integer);
     else if (parser_current_token(parser).type == Float)
         parser_match(parser, Float);
-    else
+    else if (parser_current_token(parser).type == EOS && multiline_prompt() &&
+             charstream_next_line(parser->scanner->charStream)) {
+        parser_next_token(parser);
+        parser_number(parser);
+
+    } else
         raise_exception(SYNTAX_ERROR, "Expect a number!");
 }
 
@@ -342,14 +389,15 @@ void parser_expression(struct Parser *parser)
     parser_match(parser, EOS);
 }
 
-void parse(FILE * fp)
+int parse(FILE * fp)
 {
     struct CharStream charStream;
     struct Scanner scanner;
     struct Parser parser;
 
     /* Initializations */
-    charstream_init(&charStream, fp);
+    if (!charstream_init(&charStream, fp))
+        return 0;
 
     try {
         scanner_init(&scanner, &charStream);    /* throws */
@@ -359,24 +407,17 @@ void parse(FILE * fp)
     } finally {
         printf("Syntax error, code: %d!\n", _except_code_);
     }
+
+    return 1;
 }
 
-/* Test */
+/* An Interactive Multiline Commands REPL */
 int main(int argc, char *argv[])
 {
     /*reading from file list */
-    for (int i = 1; i < argc; i++) {
-        printf("Processing file: %s ...\n", argv[i]);
-
-        FILE *fp = fopen(argv[i], "r");
-        parse(fp);
-        fclose(fp);
-    }
-
-    /*reading from stdin */
-    if (argc == 1) {
-        parse(stdin);
-    }
+    do {
+        initial_prompt();
+    } while (parse(stdin));
 
     return 0;
 }
