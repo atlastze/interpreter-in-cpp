@@ -32,8 +32,11 @@
   * Compile:
   *     gcc parser.c
   * Run:
+  *     ./a.out < example1.txt
+  *     ./a.out  example1.txt example2.txt ...
+  * or, run it interactively (press Enter to input another line, and Ctrl+D to
+  * finish):
   *     ./a.out
-  * For example: (press Enter to input another line, and Ctrl+D to finish):
   *     >>> 3-4
   *     >>> 3+4-
   *     ... 5
@@ -48,15 +51,36 @@
 
 #define EOL -1
 
+/***********************************************************
+ * stdin_is_tty detects whether the standard input is a 'tty' (that
+ * is, whether we're running parser interactively).
+ ***********************************************************/
+/* Microsoft Windows */
+#if defined(_WIN32)
+#include <io.h>
+#include <windows.h>
+#define stdin_is_tty()	_isatty(_fileno(stdin))
+/* UNIX */
+#elif defined(__unix__) || defined(__APPLE__) && defined(__MACH__)
+#include <unistd.h>
+#define stdin_is_tty()	isatty(0)
+/* ISO C definition */
+#else
+#define stdin_is_tty()	1       /* assume stdin is a tty */
+#endif
+
+static int is_interactive = 1;
+
+/* prompt of the first line */
 static inline void initial_prompt()
 {
     printf(">>> ");
 }
 
-static inline int multiline_prompt()
+/* prompt of the following line */
+static inline void multiline_prompt()
 {
     printf("... ");
-    return 1;
 }
 
 /***********************************************************
@@ -87,6 +111,8 @@ int charstream_init(struct CharStream *charStream, FILE * fp)
 {
     charStream->fp = fp;
     charStream->row = 1;
+    if (is_interactive)
+        initial_prompt();
     return charstream_read_line(charStream);
 }
 
@@ -94,6 +120,8 @@ int charstream_init(struct CharStream *charStream, FILE * fp)
 int charstream_next_line(struct CharStream *charStream)
 {
     charStream->row++;
+    if (is_interactive)
+        multiline_prompt();
     return charstream_read_line(charStream);
 }
 
@@ -366,7 +394,7 @@ void parser_number(struct Parser *parser)
         parser_match(parser, Integer);
     else if (parser_current_token(parser).type == Float)
         parser_match(parser, Float);
-    else if (parser_current_token(parser).type == EOS && multiline_prompt() &&
+    else if (parser_current_token(parser).type == EOS &&
              charstream_next_line(parser->scanner->charStream)) {
         parser_next_token(parser);
         parser_number(parser);
@@ -404,7 +432,8 @@ int parse(FILE * fp)
         parser_init(&parser, &scanner);
         parser_expression(&parser);
         printf("Accepted!\n");
-    } finally {
+    }
+    finally {
         printf("Syntax error, code: %d!\n", _except_code_);
     }
 
@@ -414,10 +443,25 @@ int parse(FILE * fp)
 /* An Interactive Multiline Commands REPL */
 int main(int argc, char *argv[])
 {
-    /*reading from file list */
-    do {
-        initial_prompt();
-    } while (parse(stdin));
+    if (argc == 1 && stdin_is_tty()) {
+        is_interactive = 1;
+        do {
+        } while (parse(stdin));
+    } else if (argc == 1) {
+        is_interactive = 0;
+        printf("## Parsing stdin:\n");
+        parse(stdin);
+    } else {
+        is_interactive = 0;
+        for (int i = 1; i < argc; i++) {
+            FILE *fp = fopen(argv[i], "r");
+            if (!fp)
+                continue;
+            printf("## Parsing %s:\n", argv[i]);
+            parse(fp);
+            fclose(fp);
+        }
+    }
 
     return 0;
 }
